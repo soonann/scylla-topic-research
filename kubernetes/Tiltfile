@@ -20,7 +20,7 @@ k8s_custom_deploy(
   'prometheus-operator',
   deps=[],
   apply_cmd="""
-    kubectl replace -f ./prometheus/bundle.yaml --force -o yaml
+    kubectl apply -f ./prometheus/bundle.yaml --force-conflicts=true --server-side -o yaml
     kubectl wait --for=condition=Ready pods -l app.kubernetes.io/name=prometheus-operator -n default 1>&2
   """,
   delete_cmd="""
@@ -66,7 +66,7 @@ k8s_yaml(
     helm(
       "./scylla",
       name="scylla",
-      values=[ "./scylla/values.yaml" ],
+      #values=[ "./scylla/values.yaml" ],
       set=['installCRDs=true']
     ), 
     ns_scylla
@@ -82,7 +82,7 @@ k8s_yaml(
     helm(
       "./scylla-manager",
       name="scylla-manager",
-      values=[ "./scylla-manager/values.yaml" ],
+      #values=[ "./scylla-manager/values.yaml" ],
       set=['installCRDs=true']
     ), 
     ns_scylla_manager
