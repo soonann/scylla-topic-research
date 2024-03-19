@@ -1,0 +1,42 @@
+version: "3"
+
+services:
+
+  scylla-node1:
+    container_name: scylla-node1
+    image: scylladb/scylla:5.2.0
+    restart: always
+    command: --seeds=scylla-node1 --smp 1 --memory 750M
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh --execute 'DESCRIBE KEYSPACES;'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      web:
+
+  scylla-node2:
+    container_name: scylla-node2
+    image: scylladb/scylla:5.2.0
+    restart: always
+    command: --seeds=scylla-node1 --smp 1 --memory 750M
+    depends_on:
+      scylla-node1:
+        condition: service_healthy
+    networks:
+      web:
+
+  scylla-node3:
+    container_name: scylla-node3
+    image: scylladb/scylla:5.2.0
+    restart: always
+    command: --seeds=scylla-node1 --smp 1 --memory 750M
+    depends_on:
+      scylla-node1:
+        condition: service_healthy
+    networks:
+      web:
+
+networks:
+  web:
+    driver: bridge

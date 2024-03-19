@@ -1,0 +1,14 @@
+{{- if .Values.webhook.createSelfSignedCertificate }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "scylla-operator.certificateName" . }}
+  namespace: scylla-operator
+spec:
+  dnsNames:
+  - {{ include "scylla-operator.webhookServiceName" . }}.scylla-operator.svc
+  issuerRef:
+    kind: Issuer
+    name: scylla-operator-selfsigned-issuer
+  secretName: {{ include "scylla-operator.certificateSecretName" . }}
+{{- end }}

@@ -1,0 +1,120 @@
+# imports
+load('ext://namespace', 'namespace_create', 'namespace_inject')
+
+# globals
+ns_cert_manager = 'cert-manager'
+ns_scylla_operator = 'scylla-operator'
+ns_scylla_manager = 'scylla-manager'
+ns_scylla = 'scylla'
+
+# create namespaces
+namespace_create(ns_cert_manager)
+namespace_create(ns_scylla)
+namespace_create(ns_scylla_manager)
+namespace_create(ns_scylla_operator)
+
+# cert manager
+#k8s_yaml( 
+#  namespace_inject( 
+#    helm(
+#      "./cert-manager",
+#      values=[ "./cert-manager/values.yaml" ],
+#      set=['installCRDs=true']
+#    ), 
+#    ns_scylla_operator
+#  ),
+#  allow_duplicates=True
+#)
+
+#k8s_resource(workload='some:workload', resource_deps=['someoperator'])
+# k8s_custom_deploy(
+#    'knative-crds',
+#    deps=[],
+#    apply_cmd="""
+#set -e
+#kubectl apply -f https://github.com/knative/serving/releases/download/knative-%s/serving-crds.yaml -o yaml
+#kubectl wait --for=condition=Established crd -l=knative.dev/crd-install=true 1>&2
+#""" % version,
+#    delete_cmd=delete_crds_cmd
+#  )
+
+# cert manager manifest
+#k8s_yaml( 
+#  "./cert-manager-manifest/cert-manager.yaml",
+#  allow_duplicates=True
+#)
+
+# prometheus crd - required by scylla charts
+k8s_custom_deploy(
+  'prometheus-operator',
+  deps=[],
+  apply_cmd="""
+    kubectl apply -f ./prometheus/bundle.yaml -o yaml
+    kubectl wait --for=condition=Ready pods -l  app.kubernetes.io/name=prometheus-operator -n default 1>&2
+  """,
+  delete_cmd="""
+    kubectl delete --ignore-not-found -f ./prometheus/bundle.yaml
+  """,
+)
+
+# cert manager 
+k8s_custom_deploy(
+  'cert-manager',
+  deps=[],
+  apply_cmd="""
+    kubectl apply -f ./cert-manager-manifest/cert-manager.yaml -o yaml
+    kubectl wait --for condition=established crd/certificates.cert-manager.io crd/issuers.cert-manager.io 1>&2
+    kubectl -n cert-manager rollout status deployment.apps/cert-manager-webhook 1>&2
+  """,
+  delete_cmd="""
+    kubectl delete --ignore-not-found -f ./cert-manager-manifest/cert-manager.yaml
+  """,
+)
+
+
+# scylla operator
+k8s_resource(workload="scylla-operator", resource_deps=["cert-manager"])
+k8s_resource(workload="webhook-server", resource_deps=["cert-manager"])
+k8s_yaml( 
+  namespace_inject( 
+    helm(
+      "./scylla-operator",
+      name="scylla-operator",
+      #values=[ "./scylla-operator/values.yaml" ],
+      set=['installCRDs=true']
+    ), 
+    ns_scylla_operator
+  ),
+  allow_duplicates=True
+)
+
+# scylla
+#k8s_resource(workload="uncategorized", resource_deps=["cert-manager", "scylla-operator", "webhook-server"])
+k8s_yaml( 
+  namespace_inject( 
+    helm(
+      "./scylla",
+      name="scylla",
+      values=[ "./scylla/values.yaml" ],
+      set=['installCRDs=true']
+    ), 
+    ns_scylla
+  ),
+  allow_duplicates=True
+)
+
+# scylla manager
+k8s_resource(workload="scylla-manager", resource_deps=["cert-manager", "scylla-operator", "uncategorized"])
+k8s_resource(workload="scylla-manager-controller", resource_deps=["cert-manager", "scylla-operator", "uncategorized"])
+k8s_yaml( 
+  namespace_inject( 
+    helm(
+      "./scylla-manager",
+      name="scylla-manager",
+      values=[ "./scylla-manager/values.yaml" ],
+      set=['installCRDs=true']
+    ), 
+    ns_scylla_manager
+  ),
+  allow_duplicates=True
+)

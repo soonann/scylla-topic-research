@@ -1,0 +1,21 @@
+# Version information
+scyllaImage:
+  tag: 5.4.3
+agentImage:
+  tag: 3.2.6
+
+# Cluster information
+developerMode: true
+datacenter: us-east-1
+racks:
+- name: us-east-1b
+  members: 2
+  storage:
+    capacity: 5Gi
+  resources:
+    limits:
+      cpu: 1
+      memory: 1Gi
+    requests:
+      cpu: 1
+      memory: 1Gi
