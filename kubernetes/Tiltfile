@@ -1,5 +1,6 @@
 # imports
 load('ext://namespace', 'namespace_create', 'namespace_inject')
+update_settings (k8s_upsert_timeout_secs = 90)
 
 # globals
 ns_cert_manager = 'cert-manager'
@@ -42,7 +43,6 @@ k8s_custom_deploy(
   """,
 )
 
-
 # scylla operator
 k8s_resource(workload="scylla-operator", resource_deps=["cert-manager"])
 k8s_resource(workload="webhook-server", resource_deps=["cert-manager"])
@@ -51,7 +51,7 @@ k8s_yaml(
     helm(
       "./scylla-operator",
       name="scylla-operator",
-      #values=[ "./scylla-operator/values.yaml" ],
+      values=[ "./values/values.operator.yaml" ],
       set=['installCRDs=true']
     ), 
     ns_scylla_operator
@@ -59,14 +59,24 @@ k8s_yaml(
   allow_duplicates=True
 )
 
-# scylla
-#k8s_resource(workload="uncategorized", resource_deps=["cert-manager", "scylla-operator", "webhook-server"])
+# scylla cluster
+k8s_resource(
+  new_name="scylla-cluster", 
+  objects=[
+    "scylla:ScyllaCluster:scylla",
+    "scylla-service-monitor:ServiceMonitor:scylla",
+  ], 
+  resource_deps=[
+    "cert-manager", 
+    "scylla-operator",
+    "webhook-server"
+  ])
 k8s_yaml( 
   namespace_inject( 
     helm(
       "./scylla",
       name="scylla",
-      #values=[ "./scylla/values.yaml" ],
+      values=[ "./values/values.cluster.yaml" ],
       set=['installCRDs=true']
     ), 
     ns_scylla
@@ -75,14 +85,14 @@ k8s_yaml(
 )
 
 # scylla manager
-k8s_resource(workload="scylla-manager", resource_deps=["cert-manager", "scylla-operator"])
-k8s_resource(workload="scylla-manager-controller", resource_deps=["cert-manager", "scylla-operator"])
+k8s_resource(workload="scylla-manager", resource_deps=["cert-manager", "scylla-operator", "scylla-cluster"])
+k8s_resource(workload="scylla-manager-controller", resource_deps=["cert-manager", "scylla-operator", "scylla-cluster"])
 k8s_yaml( 
   namespace_inject( 
     helm(
       "./scylla-manager",
       name="scylla-manager",
-      #values=[ "./scylla-manager/values.yaml" ],
+      values=[ "./values/values.manager.yaml" ],
       set=['installCRDs=true']
     ), 
     ns_scylla_manager

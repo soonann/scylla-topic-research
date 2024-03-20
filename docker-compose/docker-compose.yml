@@ -9,9 +9,9 @@ services:
     command: --seeds=scylla-node1 --smp 1 --memory 750M
     healthcheck:
       test: ["CMD-SHELL", "cqlsh --execute 'DESCRIBE KEYSPACES;'"]
-      interval: 5s
+      interval: 3s
       timeout: 5s
-      retries: 10
+      retries: 30
     networks:
       web:
 
