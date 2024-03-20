@@ -2,7 +2,10 @@ module soonann/scylla-topic-research
 
 go 1.21.4
 
-require github.com/gocql/gocql v1.6.0
+require (
+	github.com/gocql/gocql v1.6.0
+	golang.org/x/text v0.14.0
+)
 
 require (
 	github.com/golang/snappy v0.0.3 // indirect
