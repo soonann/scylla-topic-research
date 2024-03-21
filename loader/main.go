@@ -77,12 +77,12 @@ func main() {
 
 	// Insert into db
 	batch := session.NewBatch(gocql.LoggedBatch)
-	stmt := `INSERT INTO demo.flight ( uniquecarrier, flightnum, tailnum, actualelapsedtime, crselapsedtime, distance) VALUES (?, ?, ?, ?, ?, ?);`
+	stmt := `INSERT INTO demo.flight (uniquecarrier, flightnum, tailnum, actualelapsedtime, crselapsedtime, distance) VALUES (?, ?, ?, ?, ?, ?);`
 	// encoding := "iso8859-1"
 	// Create a scanner to scan file
 	count := 0
 	batchCount := 0
-	batchSize := 1000
+	batchSize := 10
 
 	// Create a reader with ISO 8859-1 encoding
 	reader := bufio.NewReader(transform.NewReader(file, charmap.ISO8859_1.NewDecoder()))

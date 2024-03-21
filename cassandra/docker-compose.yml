@@ -1,6 +1,4 @@
-version: '3.8' 
 services: 
-
   cassandra1: 
     image: cassandra:latest 
     container_name: cassandra1 
@@ -15,7 +13,7 @@ services:
         CASSANDRA_DC: DC1 
         CASSANDRA_RACK: RACK1 
         CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch 
-        CASSANDRA_NUM_TOKENS: 128 
+        CASSANDRA_NUM_TOKENS: 256 
 
   cassandra2: 
     image: cassandra:latest 

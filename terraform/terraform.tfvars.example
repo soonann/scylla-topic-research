@@ -1,0 +1,5 @@
+# aws access keys
+access_key = ""
+secret_key = ""
+# ssh key name in aws - you need to create a key first
+key_name   = "soonann"
