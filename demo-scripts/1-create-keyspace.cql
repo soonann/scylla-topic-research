@@ -1,5 +1,5 @@
 CREATE KEYSPACE Pets_Clinic 
 WITH replication = {
-  'class': 'NetworkTopologyStrategy', 
+  'class': 'NetworkTopologyStrategy',
   'replication_factor' : 3
 };
