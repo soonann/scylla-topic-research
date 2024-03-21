@@ -29,7 +29,7 @@ data "aws_ami" "ec2_ecs_optimised" {
 }
 
 resource "aws_instance" "demo-instances" {
-  for_each               = toset(["scylla-demo", "cassandra-demo", "loader-demo"])
+  for_each               = toset(["scylla-demo", "cassandra-demo"])
   ami                    = data.aws_ami.ec2_ecs_optimised.id
   vpc_security_group_ids = [aws_default_vpc.default.default_security_group_id]
   instance_type          = "t2.xlarge"
