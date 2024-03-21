@@ -40,8 +40,8 @@ resource "aws_instance" "scylla-demo-1" {
   # setup aio max nr
   echo "fs.aio-max-nr = 1048576" >> /etc/sysctl.conf
 
-  # install curl, git, golang
-  yum install curl git go -y
+  # install pkgs
+  yum install curl git go vim tmux  -y
 
   # install cqlsh
   python3 -m pip install cqlsh-expansion
@@ -51,6 +51,7 @@ resource "aws_instance" "scylla-demo-1" {
   chmod +x /usr/local/bin/docker-compose
   chgrp docker /usr/local/bin/docker-compose
   chmod 750 /usr/local/bin/docker-compose
+  su ec2-user -c 'echo "alias dc=\'docker-compose\'" >> ~/.bashrc'
 
   # clone repo
   su ec2-user -c 'git clone https://github.com/soonann/scylla-topic-research.git /home/ec2-user/scylla-topic-research'
