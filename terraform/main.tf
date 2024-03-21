@@ -46,6 +46,10 @@ resource "aws_instance" "demo-instances" {
 
   # install pkgs
   yum install curl git go vim tmux unzip -y
+  
+  # install git lfs
+  amazon-linux-extras install epel -y
+  yum install git-lfs -y
 
   # install cqlsh
   python3 -m pip install cqlsh-expansion
