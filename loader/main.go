@@ -16,7 +16,11 @@ import (
 
 func main() {
 
-	cluster := gocql.NewCluster("127.0.0.1:9042")
+	args := os.Args[1:]
+	if len(args) == 0 {
+		args = []string{"127.0.0.1:9042"}
+	}
+	cluster := gocql.NewCluster(args...)
 	cluster.Consistency = gocql.Quorum
 	cluster.Authenticator = gocql.PasswordAuthenticator{
 		Username: "cassandra",

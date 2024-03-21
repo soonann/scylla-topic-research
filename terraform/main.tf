@@ -28,7 +28,8 @@ data "aws_ami" "ec2_ecs_optimised" {
   owners = ["591542846629"] # Amazon
 }
 
-resource "aws_instance" "scylla-demo-1" {
+resource "aws_instance" "demo-instances" {
+  for_each               = toset(["scylla-demo", "cassandra-demo", "loader-demo"])
   ami                    = data.aws_ami.ec2_ecs_optimised.id
   vpc_security_group_ids = [aws_default_vpc.default.default_security_group_id]
   instance_type          = "t2.xlarge"
@@ -37,11 +38,14 @@ resource "aws_instance" "scylla-demo-1" {
   #!/bin/bash
   yum update
 
+  # set hostname
+  hostnamectl set-hostname ${each.key}
+
   # setup aio max nr
   echo "fs.aio-max-nr = 1048576" >> /etc/sysctl.conf
 
   # install pkgs
-  yum install curl git go vim tmux  -y
+  yum install curl git go vim tmux unzip -y
 
   # install cqlsh
   python3 -m pip install cqlsh-expansion
@@ -51,13 +55,12 @@ resource "aws_instance" "scylla-demo-1" {
   chmod +x /usr/local/bin/docker-compose
   chgrp docker /usr/local/bin/docker-compose
   chmod 750 /usr/local/bin/docker-compose
-  su ec2-user -c 'echo "alias dc=\'docker-compose\'" >> ~/.bashrc'
 
   # clone repo
   su ec2-user -c 'git clone https://github.com/soonann/scylla-topic-research.git /home/ec2-user/scylla-topic-research'
   EOF
 
   tags = {
-    Name = "scylla-demo-1"
+    Name = each.key
   }
 }
