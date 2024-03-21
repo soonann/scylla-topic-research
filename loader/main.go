@@ -16,11 +16,21 @@ import (
 
 func main() {
 
-	args := os.Args[1:]
-	if len(args) == 0 {
-		args = []string{"127.0.0.1:9042"}
+	// Needs at least 2 args including the ./main
+	if len(os.Args) < 2 {
+		fmt.Println("usage: ./main <insert|select|select-bypass-cache> [ addr1, addr2, ...]")
+		return
 	}
-	cluster := gocql.NewCluster(args...)
+
+	action := os.Args[1]
+	addrList := []string{"127.0.0.1:9042"}
+
+	// If the addresses are passed, use them instead
+	if len(os.Args) >= 3 {
+		addrList = os.Args[2:]
+	}
+
+	cluster := gocql.NewCluster(addrList...)
 	cluster.Consistency = gocql.Quorum
 	cluster.Authenticator = gocql.PasswordAuthenticator{
 		Username: "cassandra",
@@ -34,11 +44,25 @@ func main() {
 	}
 	defer session.Close()
 
+	start := time.Now()
+	if action == "insert" {
+		insert_data(session)
+	} else if action == "select-bypass-cache" {
+		select_data(session, true)
+	} else {
+		select_data(session, false)
+	}
+	log.Printf("Elapsed time %s", time.Since(start))
+
+}
+
+func insert_data(session *gocql.Session) {
+
 	// Create some context
 	ctx := context.Background()
 
 	// Drop the keyspace if it already exists
-	err = session.Query(`DROP KEYSPACE IF EXISTS demo`).WithContext(ctx).Exec()
+	err := session.Query(`DROP KEYSPACE IF EXISTS demo`).WithContext(ctx).Exec()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,7 +87,7 @@ func main() {
       actualelapsedtime text,
       crselapsedtime text,
       distance text,
-      PRIMARY KEY(uniquecarrier, flightnum, tailnum)
+      PRIMARY KEY(uniquecarrier, flightnum, distance)
     )`,
 	).WithContext(ctx).Exec()
 	if err != nil {
@@ -71,7 +95,6 @@ func main() {
 	}
 
 	// Open the file
-	start := time.Now()
 	file, err := os.Open("./airline.csv.sample")
 	if err != nil {
 		fmt.Println(err)
@@ -79,55 +102,36 @@ func main() {
 	}
 	defer file.Close()
 
-	// Insert into db
+	// Create batch and template statement
 	batch := session.NewBatch(gocql.LoggedBatch)
 	stmt := `INSERT INTO demo.flight (uniquecarrier, flightnum, tailnum, actualelapsedtime, crselapsedtime, distance) VALUES (?, ?, ?, ?, ?, ?);`
-	// encoding := "iso8859-1"
-	// Create a scanner to scan file
+
+	// Create a reader and scanner with ISO 8859-1 encoding
+	reader := bufio.NewReader(
+		transform.NewReader(
+			file,
+			charmap.ISO8859_1.NewDecoder(),
+		),
+	)
+	scanner := bufio.NewScanner(reader)
+
+	// Define batch vars and counters
 	count := 0
 	batchCount := 0
 	batchSize := 10
-
-	// Create a reader with ISO 8859-1 encoding
-	reader := bufio.NewReader(transform.NewReader(file, charmap.ISO8859_1.NewDecoder()))
-	scanner := bufio.NewScanner(reader)
-	// scanner := bufio.NewScanner(file)
 
 	// For each line of the file
 	for scanner.Scan() {
 
 		line := strings.Split(scanner.Text(), ",")
-
 		actualelapsedtime := line[0]
-		// airtime := line[1]
-		// arrdelay := line[2]
-		// arrtime := line[3]
-		// crsarrtime := line[4]
-		// crsdeptime := line[5]
 		crselapsedtime := line[6]
-		// cancellationcode := line[7]
-		// cancelled := line[8]
-		// carrierdelay := line[9]
-		// dayofweek := line[10]
-		// dayofmonth := line[11]
-		// depdelay := line[12]
-		// deptime := line[13]
-		// dest := line[14]
 		distance := line[15]
-		// diverted := line[16]
 		flightnum := line[17]
-		// lateaircraftdelay := line[18]
-		// month := line[19]
-		// nasdelay := line[20]
-		// origin := line[21]
-		// securitydelay := line[22]
 		tailnum := line[23]
-		// taxiin := line[24]
-		// taxiout := line[25]
 		uniquecarrier := line[26]
-		// weatherdelay := line[27]
-		// year := line[28]
 
+		// Craft a batch query with the template statement
 		batch.Query(
 			stmt,
 			uniquecarrier,
@@ -150,9 +154,9 @@ func main() {
 			count = 0
 			batch = session.NewBatch(gocql.LoggedBatch)
 		}
-
 	}
 
+	// Clean up the last batch
 	err = session.ExecuteBatch(batch)
 	if err != nil {
 		log.Panic(err)
@@ -162,6 +166,45 @@ func main() {
 	if err := scanner.Err(); err != nil {
 		fmt.Println(err)
 	}
-	log.Printf("Elapsed time %s", time.Since(start))
+}
 
+func select_data(session *gocql.Session, bypassCache bool) {
+	// Execute the SELECT query
+	query := "SELECT * FROM demo.flight WHERE uniquecarrier='MQ'"
+	if bypassCache {
+		query += " BYPASS CACHE;"
+	}
+	iter := session.Query(query).Iter()
+
+	// Iterate over the results
+	var uniquecarrier, flightnum, tailnum, actualelapsedtime, crselapsedtime, distance string
+
+	counter := 0
+	// For each line, print it out
+	for iter.Scan(
+		&uniquecarrier,
+		&flightnum,
+		&tailnum,
+		&actualelapsedtime,
+		&crselapsedtime,
+		&distance,
+	) {
+		// Process each row
+		fmt.Printf("%s, %s, %s, %s, %s, %s\n",
+			uniquecarrier,
+			flightnum,
+			tailnum,
+			actualelapsedtime,
+			crselapsedtime,
+			distance,
+		)
+		counter++
+	}
+
+	// Check for errors
+	if err := iter.Close(); err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Printf("Read total of %d records:", counter)
 }
